@@ -5,6 +5,174 @@
 
 extern const unsigned char menu_icons[][66];
 
+namespace {
+  static const uint8_t MAX_RECENT_WIFI_NETWORKS = 10;
+
+  struct RecentWiFiEntry {
+    String ssid;
+    String password;
+  };
+
+  String escapeRecentWiFiField(const String& value) {
+    String escaped;
+    escaped.reserve(value.length() + 4);
+
+    for (size_t i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      if ((c == '\\') || (c == '|') || (c == ';')) {
+        escaped += '\\';
+      }
+      escaped += c;
+    }
+
+    return escaped;
+  }
+
+  void parseRecentWiFiSetting(const String& raw, std::vector<RecentWiFiEntry>& entries) {
+    entries.clear();
+
+    RecentWiFiEntry current;
+    String current_field = "";
+    bool reading_password = false;
+    bool escape_next = false;
+
+    for (size_t i = 0; i < raw.length(); i++) {
+      char c = raw.charAt(i);
+
+      if (escape_next) {
+        current_field += c;
+        escape_next = false;
+        continue;
+      }
+
+      if (c == '\\') {
+        escape_next = true;
+        continue;
+      }
+
+      if (!reading_password && (c == '|')) {
+        current.ssid = current_field;
+        current_field = "";
+        reading_password = true;
+        continue;
+      }
+
+      if (c == ';') {
+        if (reading_password) {
+          current.password = current_field;
+          if (current.ssid != "")
+            entries.push_back(current);
+        }
+
+        current = RecentWiFiEntry();
+        current_field = "";
+        reading_password = false;
+        continue;
+      }
+
+      current_field += c;
+    }
+
+    if (reading_password) {
+      current.password = current_field;
+      if (current.ssid != "")
+        entries.push_back(current);
+    }
+  }
+
+  String encodeRecentWiFiSetting(const std::vector<RecentWiFiEntry>& entries) {
+    String encoded = "";
+
+    for (size_t i = 0; i < entries.size(); i++) {
+      if (entries[i].ssid == "")
+        continue;
+
+      if (encoded.length() > 0)
+        encoded += ';';
+
+      encoded += escapeRecentWiFiField(entries[i].ssid);
+      encoded += '|';
+      encoded += escapeRecentWiFiField(entries[i].password);
+    }
+
+    return encoded;
+  }
+
+  void rememberRecentWiFiSelection(const String& ssid) {
+    if (ssid == "")
+      return;
+
+    String current_setting = settings_obj.loadSetting<String>("RecentWiFi");
+
+    std::vector<RecentWiFiEntry> current_entries;
+    parseRecentWiFiSetting(current_setting, current_entries);
+
+    std::vector<RecentWiFiEntry> updated_entries;
+    updated_entries.reserve(MAX_RECENT_WIFI_NETWORKS);
+
+    RecentWiFiEntry latest_entry;
+    latest_entry.ssid = ssid;
+    latest_entry.password = "";
+    updated_entries.push_back(latest_entry);
+
+    for (size_t i = 0; i < current_entries.size(); i++) {
+      if (current_entries[i].ssid == ssid)
+        continue;
+
+      if (updated_entries.size() >= MAX_RECENT_WIFI_NETWORKS)
+        break;
+
+      updated_entries.push_back(current_entries[i]);
+    }
+
+    settings_obj.saveSetting<bool>("RecentWiFi", encodeRecentWiFiSetting(updated_entries));
+  }
+
+  bool isRecentWiFiNearby(const String& ssid) {
+    if (ssid == "")
+      return false;
+
+    wifi_mode_t previous_mode = WiFi.getMode();
+    bool mode_changed = false;
+
+    if ((previous_mode != WIFI_MODE_STA) && (previous_mode != WIFI_MODE_APSTA)) {
+      WiFi.mode(WIFI_MODE_STA);
+      mode_changed = true;
+      delay(100);
+    }
+
+    int found_networks = WiFi.scanNetworks(false, true);
+    bool nearby = false;
+
+    if (found_networks > 0) {
+      for (int i = 0; i < found_networks; i++) {
+        if (WiFi.SSID(i) == ssid) {
+          nearby = true;
+          break;
+        }
+      }
+    }
+
+    WiFi.scanDelete();
+
+    if (mode_changed) {
+      WiFi.mode(previous_mode);
+      delay(50);
+    }
+
+    return nearby;
+  }
+
+  void showCenterStatus(const String& text, uint16_t color, uint16_t wait_ms) {
+    display_obj.clearScreen();
+    display_obj.tft.setFreeFont(NULL);
+    display_obj.tft.setTextSize(1);
+    display_obj.tft.setTextColor(color, TFT_BLACK);
+    display_obj.showCenterText(text, TFT_HEIGHT / 2);
+    delay(wait_ms);
+  }
+}
+
 MenuFunctions::MenuFunctions()
 {
 }
@@ -1537,8 +1705,8 @@ void MenuFunctions::RunSetup()
   this->addNodes(&mainMenu, text_table1[9], TFTBLUE, NULL, DEVICE, [this]() {
     this->changeMenu(&deviceMenu, true);
   });
-  this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, []() {
-    ESP.restart();
+  this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, [this]() {
+    this->changeMenu(&confirmMenu, true);
   });
 
   // Build WiFi Menu
@@ -2097,6 +2265,10 @@ void MenuFunctions::RunSetup()
           new_ap.selected = !access_points->get(x).selected;
           access_points->set(x, new_ap);
 
+          if (new_ap.selected) {
+            rememberRecentWiFiSelection(new_ap.essid);
+          }
+
           MenuNode new_node = current_menu->list->get(x + 2);
           new_node.selected = !current_menu->list->get(x + 2).selected;
           current_menu->list->set(x + 2, new_node);
@@ -2119,6 +2291,9 @@ void MenuFunctions::RunSetup()
         current_menu->list->set(i + 2, new_node);
 
         access_points->set(i, new_ap);
+        if (new_ap.selected) {
+          rememberRecentWiFiSelection(new_ap.essid);
+        }
         }, access_points->get(i).selected);
       }
       this->changeMenu(&wifiAPMenu, true);
@@ -2317,6 +2492,71 @@ void MenuFunctions::RunSetup()
         }
         this->changeMenu(&wifiAPMenu, true);
       }
+    });
+
+    this->addNodes(&wifiGeneralMenu, "Recent WiFi", TFTCYAN, NULL, JOIN_WIFI, [this](){
+      String recent_setting = settings_obj.loadSetting<String>("RecentWiFi");
+      std::vector<RecentWiFiEntry> recent_entries;
+      parseRecentWiFiSetting(recent_setting, recent_entries);
+
+      wifiAPMenu.parentMenu = &wifiGeneralMenu;
+
+      // Add the back button
+      wifiAPMenu.list->clear();
+      this->addNodes(&wifiAPMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
+        this->changeMenu(wifiAPMenu.parentMenu, true);
+      });
+
+      int added_entries = 0;
+      for (size_t i = 0; i < recent_entries.size(); i++) {
+        if (added_entries >= 10)
+          break;
+
+        if (recent_entries[i].ssid == "")
+          continue;
+
+        String recent_ssid = recent_entries[i].ssid;
+
+        this->addNodes(&wifiAPMenu, recent_ssid, TFTCYAN, NULL, 255, [this, recent_ssid]() {
+          showCenterStatus("Checking network...", TFT_CYAN, 400);
+
+          if (!isRecentWiFiNearby(recent_ssid)) {
+            Serial.println("Recent WiFi not nearby: " + recent_ssid);
+            showCenterStatus("Network not nearby", TFT_RED, 1000);
+            this->changeMenu(&wifiGeneralMenu, true);
+            return;
+          }
+
+          bool selected_from_list = false;
+          for (int ap_index = 0; ap_index < access_points->size(); ap_index++) {
+            AccessPoint ap = access_points->get(ap_index);
+            if (ap.essid == recent_ssid) {
+              ap.selected = true;
+              access_points->set(ap_index, ap);
+              selected_from_list = true;
+            }
+          }
+
+          if (selected_from_list) {
+            showCenterStatus("Network selected", TFT_GREEN, 700);
+          }
+          else {
+            showCenterStatus("Nearby. Run AP scan once", TFT_YELLOW, 1000);
+          }
+
+          this->changeMenu(&wifiGeneralMenu, true);
+        });
+
+        added_entries++;
+      }
+
+      if (added_entries == 0) {
+        showCenterStatus("No recent WiFi", TFT_CYAN, 1000);
+        this->changeMenu(&wifiGeneralMenu, true);
+        return;
+      }
+
+      this->changeMenu(&wifiAPMenu, true);
     });
 
     this->addNodes(&wifiGeneralMenu, "Start AP", TFTGREEN, NULL, KEYBOARD_ICO, [this](){
@@ -2841,6 +3081,18 @@ void MenuFunctions::RunSetup()
   this->addNodes(&failedUpdateMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
     wifi_scan_obj.currentScanMode = WIFI_SCAN_OFF;
     this->changeMenu(failedUpdateMenu.parentMenu, true);
+  });
+
+  // Reboot confirmation menu
+  confirmMenu.parentMenu = &mainMenu;
+  this->addNodes(&confirmMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
+    this->changeMenu(confirmMenu.parentMenu, true);
+  });
+  this->addNodes(&confirmMenu, "Cancel", TFTGREEN, NULL, 0, [this]() {
+    this->changeMenu(confirmMenu.parentMenu, true);
+  });
+  this->addNodes(&confirmMenu, "Yes, Reboot", TFTRED, NULL, REBOOT, []() {
+    ESP.restart();
   });
 
   // Device info menu

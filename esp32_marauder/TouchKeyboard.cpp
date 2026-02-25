@@ -24,7 +24,7 @@ static const char ROW1_SYM[] = "`~-_=+[]{}";
 static const char ROW2_SYM[] = "\\|;:'\"";
 static const char ROW3_SYM[] = ",.<>/?";
 
-static const uint16_t TOUCH_THRESHOLD = 600;
+static const uint16_t TOUCH_THRESHOLD = 650;
 
 enum KeyboardLayout {
   LAYOUT_ALPHA = 0,

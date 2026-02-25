@@ -2058,6 +2058,7 @@ void WiFiScan::initWiFi(uint8_t scan_mode) {
     this->ep_deauth = settings_obj.loadSetting<bool>("EPDeauth");
     settings_obj.loadSetting<String>("ClientSSID");
     settings_obj.loadSetting<String>("ClientPW");
+    settings_obj.loadSetting<String>("RecentWiFi");
     //Serial.println(F("Initialization complete"));
   }
 }

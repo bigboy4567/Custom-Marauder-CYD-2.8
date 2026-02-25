@@ -365,6 +365,12 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, Strin
     jsonBuffer["Settings"][7]["range"]["min"] = "";
     jsonBuffer["Settings"][7]["range"]["max"] = "";
 
+    jsonBuffer["Settings"][8]["name"] = "RecentWiFi";
+    jsonBuffer["Settings"][8]["type"] = "String";
+    jsonBuffer["Settings"][8]["value"] = "";
+    jsonBuffer["Settings"][8]["range"]["min"] = "";
+    jsonBuffer["Settings"][8]["range"]["max"] = "";
+
     //jsonBuffer.printTo(settingsFile);
     if (serializeJson(jsonBuffer, settingsFile) == 0) {
       Serial.println(F("Failed to write to file"));

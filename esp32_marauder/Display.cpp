@@ -48,6 +48,11 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
         if (this->touchscreen.tirqTouched() && this->touchscreen.touched()) {
           TS_Point p = this->touchscreen.getPoint();
 
+          // Apply pressure filtering on XPT2046 to reduce false/light touches.
+          if (p.z < threshold) {
+            return 0;
+          }
+
           //*x = map(p.x, 200, 3700, 1, TFT_WIDTH);
           //*y = map(p.y, 240, 3800, 1, TFT_HEIGHT);
 

@@ -116,8 +116,8 @@ class Display
     int blank[19]; // We keep all the strings pixel lengths to optimise the speed of the top line blanking
 
     int8_t menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_hold = false);
-    uint8_t updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold = 600);
-    bool isTouchHeld(uint16_t threshold = 600);
+    uint8_t updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold = 650);
+    bool isTouchHeld(uint16_t threshold = 650);
     void tftDrawRedOnOffButton();
     void tftDrawGreenOnOffButton();
     void tftDrawGraphObjects(byte x_scale);
