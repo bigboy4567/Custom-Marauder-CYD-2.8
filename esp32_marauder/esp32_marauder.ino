@@ -28,6 +28,7 @@ https://www.online-utility.org/image/convert/to/XBM
 #endif
 
 #include "Assets.h"
+#include "StartupLogo.h"
 #include "WiFiScan.h"
 #ifdef HAS_SD
   #include "SDInterface.h"
@@ -239,13 +240,37 @@ void setup()
 
   #ifdef HAS_SCREEN
     #ifndef MARAUDER_CARDPUTER
-      display_obj.tft.drawCentreString("ESP32 Marauder", TFT_WIDTH/2, TFT_HEIGHT * 0.33, 2);
-      display_obj.tft.drawCentreString("TiktokExposeQC7", TFT_WIDTH/2, TFT_HEIGHT * 0.5, 2);
-      display_obj.tft.drawCentreString(display_obj.version_number, TFT_WIDTH/2, TFT_HEIGHT * 0.66, 2);
+      const int screen_w = TFT_WIDTH;
+      const int screen_h = TFT_HEIGHT;
+      const int center_x = screen_w / 2;
+      const int title_y = (screen_h * 24) / 100;
+      const int subtitle_y = (screen_h * 40) / 100;
+      const int logo_x = center_x - (startup_logo_width / 2);
+      const int logo_y = (screen_h * 50) / 100;
+      const int version_y = (screen_h * 78) / 100;
+
+      display_obj.tft.drawCentreString("ESP32 Marauder", center_x, title_y, 2);
+      display_obj.tft.drawCentreString("TiktokExposeQC7", center_x, subtitle_y, 2);
+      if ((logo_x >= 0) && ((logo_x + startup_logo_width) <= screen_w) && ((logo_y + startup_logo_height) <= screen_h)) {
+        display_obj.tft.pushImage(logo_x, logo_y, startup_logo_width, startup_logo_height, startup_logo);
+      }
+      display_obj.tft.drawCentreString(display_obj.version_number, center_x, version_y, 2);
     #else
-      display_obj.tft.drawCentreString("ESP32 Marauder", TFT_HEIGHT/2, TFT_WIDTH * 0.33, 2);
-      display_obj.tft.drawCentreString("TiktokExposeQC7", TFT_HEIGHT/2, TFT_WIDTH * 0.5, 2);
-      display_obj.tft.drawCentreString(display_obj.version_number, TFT_HEIGHT/2, TFT_WIDTH * 0.66, 2);
+      const int screen_w = TFT_HEIGHT;
+      const int screen_h = TFT_WIDTH;
+      const int center_x = screen_w / 2;
+      const int title_y = (screen_h * 24) / 100;
+      const int subtitle_y = (screen_h * 40) / 100;
+      const int logo_x = center_x - (startup_logo_width / 2);
+      const int logo_y = (screen_h * 50) / 100;
+      const int version_y = (screen_h * 78) / 100;
+
+      display_obj.tft.drawCentreString("ESP32 Marauder", center_x, title_y, 2);
+      display_obj.tft.drawCentreString("TiktokExposeQC7", center_x, subtitle_y, 2);
+      if ((logo_x >= 0) && ((logo_x + startup_logo_width) <= screen_w) && ((logo_y + startup_logo_height) <= screen_h)) {
+        display_obj.tft.pushImage(logo_x, logo_y, startup_logo_width, startup_logo_height, startup_logo);
+      }
+      display_obj.tft.drawCentreString(display_obj.version_number, center_x, version_y, 2);
     #endif
   #endif
 
