@@ -242,36 +242,24 @@ void setup()
     #ifndef MARAUDER_CARDPUTER
       const int screen_w = TFT_WIDTH;
       const int screen_h = TFT_HEIGHT;
-      const int center_x = screen_w / 2;
-      const int title_y = (screen_h * 24) / 100;
-      const int subtitle_y = (screen_h * 40) / 100;
-      const int logo_x = center_x - (startup_logo_width / 2);
-      const int logo_y = (screen_h * 50) / 100;
-      const int version_y = (screen_h * 78) / 100;
-
-      display_obj.tft.drawCentreString("ESP32 Marauder", center_x, title_y, 2);
-      display_obj.tft.drawCentreString("TiktokExposeQC7", center_x, subtitle_y, 2);
-      if ((logo_x >= 0) && ((logo_x + startup_logo_width) <= screen_w) && ((logo_y + startup_logo_height) <= screen_h)) {
-        display_obj.tft.pushImage(logo_x, logo_y, startup_logo_width, startup_logo_height, startup_logo);
-      }
-      display_obj.tft.drawCentreString(display_obj.version_number, center_x, version_y, 2);
     #else
       const int screen_w = TFT_HEIGHT;
       const int screen_h = TFT_WIDTH;
-      const int center_x = screen_w / 2;
-      const int title_y = (screen_h * 24) / 100;
-      const int subtitle_y = (screen_h * 40) / 100;
-      const int logo_x = center_x - (startup_logo_width / 2);
-      const int logo_y = (screen_h * 50) / 100;
-      const int version_y = (screen_h * 78) / 100;
-
-      display_obj.tft.drawCentreString("ESP32 Marauder", center_x, title_y, 2);
-      display_obj.tft.drawCentreString("TiktokExposeQC7", center_x, subtitle_y, 2);
-      if ((logo_x >= 0) && ((logo_x + startup_logo_width) <= screen_w) && ((logo_y + startup_logo_height) <= screen_h)) {
-        display_obj.tft.pushImage(logo_x, logo_y, startup_logo_width, startup_logo_height, startup_logo);
-      }
-      display_obj.tft.drawCentreString(display_obj.version_number, center_x, version_y, 2);
     #endif
+    const int center_x = screen_w / 2;
+    const int logo_x = center_x - (startup_logo_width / 2);
+    const int logo_y_raw = ((screen_h - startup_logo_height) / 2) - 16;
+    const int logo_y = (logo_y_raw < 0) ? 0 : logo_y_raw;
+    const int text_y_raw = logo_y + startup_logo_height + 12;
+    const int text_y = (text_y_raw > (screen_h - 20)) ? (screen_h - 20) : text_y_raw;
+
+    display_obj.tft.fillScreen(TFT_BLACK);
+    display_obj.tft.setSwapBytes(true);
+    if ((logo_x >= 0) && ((logo_x + startup_logo_width) <= screen_w) && ((logo_y + startup_logo_height) <= screen_h)) {
+      display_obj.tft.pushImage(logo_x, logo_y, startup_logo_width, startup_logo_height, startup_logo);
+    }
+    display_obj.tft.setSwapBytes(false);
+    display_obj.tft.drawCentreString("TiktokExposeQC7's Marauder", center_x, text_y, 2);
   #endif
 
 
@@ -309,11 +297,6 @@ void setup()
   #endif
 
   wifi_scan_obj.RunSetup();
-
-  #ifdef HAS_SCREEN
-    display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    display_obj.tft.drawCentreString("Initializing...", TFT_WIDTH/2, TFT_HEIGHT * 0.82, 1);
-  #endif
 
   evil_portal_obj.setup();
 
